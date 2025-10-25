@@ -1,3 +1,4 @@
+"use client";
 import "./globals.css";
 import StaggeredMenu from "@/components/StaggeredMenu";
 
@@ -26,11 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             displaySocials={true}
             displayItemNumbering={true}
             menuButtonColor="#fff"
-            openMenuButtonColor="#fff"
+            openMenuButtonColor="#000000ff"
             changeMenuColorOnOpen={true}
             colors={["#B19EEF", "#5227FF"]}
             logoUrl="/path-to-your-logo.svg"
-            accentColor="#ff6b6b"
+            accentColor="#5227FF"
             isFixed={true}
           />
         </div>
