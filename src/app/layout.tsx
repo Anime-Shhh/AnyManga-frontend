@@ -4,14 +4,13 @@ import StaggeredMenu from '@/components/StaggeredMenu';
 
 const menuItems = [
   { label: 'Home', ariaLabel: 'Go to home page', link: '/' },
-  { label: 'About', ariaLabel: 'Learn about us', link: '/about' },
-  { label: 'Services', ariaLabel: 'View our services', link: '/services' },
+  { label: 'Read', ariaLabel: 'View our services', link: '/read' },
   { label: 'Offline', ariaLabel: 'Download Manga', link: '/download' },
 ];
 
 const socialItems = [
   { label: 'Twitter', link: 'https://twitter.com' },
-  { label: 'GitHub', link: 'https://github.com' },
+  { label: 'GitHub', link: 'https://github.com/Anime-Shhh' },
   { label: 'LinkedIn', link: 'https://linkedin.com' },
 ];
 

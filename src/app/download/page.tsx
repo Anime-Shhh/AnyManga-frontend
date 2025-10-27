@@ -17,22 +17,45 @@ export default function DownloadPage() {
       `http://localhost:8080/info?title=${encodeURIComponent(name)}`
     );
     const data = await res.json();
+    setMangaName(name)
     setMangaCover(data.cover);
     setChapters(data.chapters);
   };
 
   const downloadPDF = async () => {
-    if (!mangaName || startChapter === "" || endChapter === "") return;
-    const res = await fetch(
-      `/api/download?manga=${encodeURIComponent(
-        mangaName
-      )}&start=${startChapter}&end=${endChapter}`
-    );
+    if (
+      !mangaName ||
+      startChapterIndex < 0 ||
+      endChapterIndex < 0 ||
+      endChapterIndex < startChapterIndex
+    ) return;
+
+    // Slice chapters between selected range
+    const selectedChapters = chapters.slice(startChapterIndex, endChapterIndex + 1);
+
+    // Send JSON body
+    const res = await fetch("http://localhost:8080/chapters", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: mangaName,
+        chapters: selectedChapters,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("Failed to generate PDF");
+      return;
+    }
+
+    // Get PDF blob
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${mangaName}_${startChapter}-${endChapter}.pdf`;
+    a.download = `${mangaName}_${selectedChapters[0]}-${selectedChapters[selectedChapters.length - 1]}.pdf`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
