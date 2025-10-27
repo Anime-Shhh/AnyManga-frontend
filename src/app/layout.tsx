@@ -28,11 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           displaySocials={true}
           displayItemNumbering={true}
           menuButtonColor="#fff"
-          openMenuButtonColor="#fff"
+          openMenuButtonColor="#000000ff"
           changeMenuColorOnOpen={true}
           colors={['#B19EEF', '#5227FF']}
           logoUrl="/logo.svg"
-          accentColor="#ff6b6b"
+          accentColor="#5227FF"
         />
         {/* Clickable Main Content */}
         <main className="flex-1 overflow-y-auto p-6">
