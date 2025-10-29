@@ -128,7 +128,7 @@ export default function DownloadPage() {
                 items={chapters.slice(startChapterIndex)}
                 onItemSelect={(item, index) => {
                   setEndChapter(item);       // store the item
-                  setEndChapterIndex(index); // store the index
+                  setEndChapterIndex(startChapterIndex + index); // store the index
                 }}
                 showGradients={true}
                 enableArrowNavigation={true}
