@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import RotatingText from "@/components/RotatingText";
 
 export default function Home() {
   return (
@@ -8,9 +9,24 @@ export default function Home() {
 
       {/* Hero Section */}
       <div className="flex flex-col items-center gap-8 mt-24">
-        <h1 className="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-[#B19EEF] to-[#5227FF] bg-clip-text text-transparent">
-          Discover. Read. Download.
-        </h1>
+        <div className="flex items-center gap-3">
+          <RotatingText
+            texts={["Discover", "Read", "Download"]}
+            mainClassName="px-2 sm:px-3 bg-[#5227FF] text-white overflow-hidden py-1 sm:py-2 justify-center rounded-lg text-5xl sm:text-6xl font-bold"
+            staggerFrom="last"
+            initial={{ y: "100%" }}
+            animate={{ y: 0.5 }}
+            exit={{ y: "-150%" }}
+            auto={true}
+            staggerDuration={0.025}
+            splitLevelClassName="overflow-hidden pb-1"
+            transition={{ type: "spring", damping: 30, stiffness: 400 }}
+            rotationInterval={3000}
+
+          />
+          <h1 className="text-5xl sm:text-6xl font-bold text-white">Any Manga</h1>
+        </div>
+
         <p className="text-lg max-w-2xl text-gray-300 leading-relaxed">
           Welcome to <span className="font-semibold text-white">AnyManga</span> —
           your all-in-one manga reader built for speed, simplicity, and discovery.
