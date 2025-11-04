@@ -17,7 +17,7 @@ export default function DownloadPage() {
       `http://localhost:8080/info?title=${encodeURIComponent(name)}`
     );
     const data = await res.json();
-    setMangaName(name)
+    setMangaName(name);
     setMangaCover(data.cover);
     setChapters(data.chapters);
   };
@@ -28,12 +28,11 @@ export default function DownloadPage() {
       startChapterIndex < 0 ||
       endChapterIndex < 0 ||
       endChapterIndex < startChapterIndex
-    ) return;
+    )
+      return;
 
-    // Slice chapters between selected range
     const selectedChapters = chapters.slice(startChapterIndex, endChapterIndex + 1);
 
-    // Send JSON body
     const res = await fetch("http://localhost:8080/chapters", {
       method: "POST",
       headers: {
@@ -50,7 +49,6 @@ export default function DownloadPage() {
       return;
     }
 
-    // Get PDF blob
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -58,6 +56,20 @@ export default function DownloadPage() {
     a.download = `${mangaName}_${selectedChapters[0]}-${selectedChapters[selectedChapters.length - 1]}.pdf`;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  // Helper: find and click the "Next" button rendered by the Stepper
+  // Uses text matching so it still works if Stepper renders controls elsewhere.
+  const clickNext = () => {
+    // small timeout so DOM updates from React finish first
+    setTimeout(() => {
+      const buttons = Array.from(document.querySelectorAll("button"));
+      const nextBtn = buttons.find((b) => {
+        const txt = (b.textContent || "").trim().toLowerCase();
+        return txt === "next" || txt === "next ›" || txt === "› next";
+      });
+      (nextBtn as HTMLButtonElement | undefined)?.click();
+    }, 0);
   };
 
   return (
@@ -75,96 +87,110 @@ export default function DownloadPage() {
       >
         {/* Step 1: Manga name input */}
         <Step>
-          <h2 className="text-xl font-semibold mb-4">Enter Manga Name</h2>
-          <input
-            value={mangaName}
-            onChange={(e) => setMangaName(e.target.value)}
-            placeholder="Manga name"
-            className="p-2 rounded bg-gray-700 text-white placeholder-white w-full max-w-md mt-4"
-          />
+          <div className="flex flex-col items-center justify-center w-full text-center">
+            <h2 className="text-xl font-semibold mb-4">Enter Manga Name</h2>
+            <input
+              value={mangaName}
+              onChange={(e) => setMangaName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && mangaName.trim() !== "") {
+                  e.preventDefault();
+                  clickNext();
+                }
+              }}
+              placeholder="Manga name"
+              className="p-2 rounded bg-gray-700 text-white placeholder-white w-full max-w-md mt-4"
+            />
+          </div>
         </Step>
 
         {/* Step 2: Select Start Chapter */}
         <Step>
-          <h2 className="text-xl font-semibold mb-4">Select Start Chapter</h2>
-          <div className="flex items-start justify-center gap-6 w-full max-w-4xl">
-            {mangaCover && (
-              <img
-                src={mangaCover}
-                alt="Manga cover"
-                className="w-48 h-auto rounded shadow-lg object-cover"
-              />
-            )}
-
-            <div className="flex-1">
-              <AnimatedList
-                items={chapters}
-                onItemSelect={(item, index) => {
-                  setStartChapter(item);       // store the item
-                  setStartChapterIndex(index); // store the index
-                }}
-                showGradients={true}
-                enableArrowNavigation={true}
-                displayScrollbar={true}
-              />
+          <div className="flex flex-col items-center justify-center w-full text-center">
+            <h2 className="text-xl font-semibold mb-4">Select Start Chapter</h2>
+            <div className="flex items-center justify-center gap-6 w-full max-w-4xl">
+              {mangaCover && (
+                <img
+                  src={mangaCover}
+                  alt="Manga cover"
+                  className="w-48 h-auto rounded shadow-lg object-cover"
+                />
+              )}
+              <div className="flex-1">
+                <AnimatedList
+                  items={chapters}
+                  onItemSelect={(item, index) => {
+                    setStartChapter(item);
+                    setStartChapterIndex(index);
+                    clickNext();
+                  }}
+                  showGradients={true}
+                  enableArrowNavigation={true}
+                  displayScrollbar={true}
+                />
+              </div>
             </div>
           </div>
         </Step>
 
         {/* Step 3: Select End Chapter */}
         <Step>
-          <h2 className="text-xl font-semibold mb-4">Select End Chapter</h2>
-          <div className="flex items-start justify-center gap-6 w-full max-w-4xl">
-            {mangaCover && (
-              <img
-                src={mangaCover}
-                alt="Manga cover"
-                className="w-48 h-auto rounded shadow-lg object-cover"
-              />
-            )}
-
-            <div className="flex-1">
-              <AnimatedList
-                items={chapters.slice(startChapterIndex)}
-                onItemSelect={(item, index) => {
-                  setEndChapter(item);       // store the item
-                  setEndChapterIndex(startChapterIndex + index); // store the index
-                }}
-                showGradients={true}
-                enableArrowNavigation={true}
-                displayScrollbar={true}
-              />
+          <div className="flex flex-col items-center justify-center w-full text-center">
+            <h2 className="text-xl font-semibold mb-4">Select End Chapter</h2>
+            <div className="flex items-center justify-center gap-6 w-full max-w-4xl">
+              {mangaCover && (
+                <img
+                  src={mangaCover}
+                  alt="Manga cover"
+                  className="w-48 h-auto rounded shadow-lg object-cover"
+                />
+              )}
+              <div className="flex-1">
+                <AnimatedList
+                  items={chapters.slice(startChapterIndex)}
+                  onItemSelect={(item, index) => {
+                    setEndChapter(item);
+                    setEndChapterIndex(startChapterIndex + index);
+                    clickNext();
+                  }}
+                  showGradients={true}
+                  enableArrowNavigation={true}
+                  displayScrollbar={true}
+                />
+              </div>
             </div>
-          </div>
 
-          {startChapter !== "" &&
-            endChapter !== "" &&
-            startChapterIndex > endChapterIndex && (
-              <p className="text-red-500 mt-4 text-center">
-                Start chapter cannot be greater than end chapter.
-              </p>
-            )}
+            {startChapter !== "" &&
+              endChapter !== "" &&
+              startChapterIndex > endChapterIndex && (
+                <p className="text-red-500 mt-4 text-center">
+                  Start chapter cannot be greater than end chapter.
+                </p>
+              )}
+          </div>
         </Step>
 
         {/* Step 4: Confirmation */}
         <Step>
-          <h2 className="text-xl font-semibold mb-4">Confirm and Download</h2>
-          {mangaCover && (
-            <img
-              src={mangaCover}
-              alt="Manga cover"
-              className="w-48 h-auto rounded shadow-lg mb-4"
-            />
-          )}
-          <p>
-            Manga: <strong>{mangaName}</strong>
-          </p>
-          <p>
-            Chapters:{" "}
-            <strong>
-              {startChapter} - {endChapter}
-            </strong>
-          </p>
+          <div className="flex flex-col items-center justify-center w-full text-center">
+            <h2 className="text-xl font-semibold mb-4">Confirm and Download</h2>
+            {mangaCover && (
+              <img
+                src={mangaCover}
+                alt="Manga cover"
+                className="w-48 h-auto rounded shadow-lg mb-4"
+              />
+            )}
+            <p>
+              Manga: <strong>{mangaName}</strong>
+            </p>
+            <p>
+              Chapters:{" "}
+              <strong>
+                {startChapter} - {endChapter}
+              </strong>
+            </p>
+          </div>
         </Step>
       </Stepper>
     </div>
