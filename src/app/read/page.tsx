@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import Link from "next/link"
 
 interface CarouselItem {
   title: string;
@@ -123,9 +124,11 @@ export default function CarouselPage() {
             <h6 className="text-base font-semibold text-white/80 mb-6">{currentItem.description}</h6>
 
             <div className="flex gap-4">
-              <button className="px-6 py-3 bg-black/30 backdrop-blur-sm border border-white rounded-lg text-white hover:bg-black/50 transition">
-                SEE MORE
-              </button>
+              <Link href={`/read/${encodeURIComponent(currentItem.title.toLowerCase().replace(/\s+/g, '-'))}`}>
+                <button className="px-6 py-3 bg-black/30 backdrop-blur-sm border border-white rounded-lg text-white hover:bg-black/50 transition">
+                  SEE MORE
+                </button>
+              </Link>
             </div>
           </motion.div>
 
