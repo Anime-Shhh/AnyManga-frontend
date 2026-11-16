@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "web": {
+      "root": ".",
+      "framework": "nextjs"
+    },
+    "manga_api": {
+      "root": "backend",
+      "framework": "go"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/manga/(.*)", "destination": { "service": "manga_api" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ]
+}
