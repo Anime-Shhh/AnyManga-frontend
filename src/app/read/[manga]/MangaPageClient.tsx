@@ -1,82 +1,78 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import AnimatedList from "@/components/AnimatedList";
+/* eslint-disable @next/next/no-img-element -- MangaRead serves remote covers directly. */
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { chapterHref, mangaAPI, type MangaDetails } from "@/lib/manga";
 
 export default function MangaPageClient({ manga }: { manga: string }) {
-  const [mangaData, setMangaData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [details, setDetails] = useState<MangaDetails>();
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const fetchMangaData = async () => {
-      try {
-        const res = await fetch(
-          `http://localhost:8080/mangapage?title=${encodeURIComponent(manga)}`
-        );
-        if (!res.ok) throw new Error("Failed to fetch manga data");
-        const data = await res.json();
-        setMangaData(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMangaData();
-  }, [manga]);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen text-lg text-gray-400">
-        Loading manga details...
-      </div>
-    );
-  }
-
-  if (error || !mangaData) {
-    return (
-      <div className="flex justify-center items-center h-screen text-red-500">
-        Error: {error || "Failed to load manga information"}
-      </div>
-    );
-  }
+    const request = new AbortController();
+    mangaAPI<MangaDetails>("mangapage", { title: manga }, request.signal)
+      .then((data) => {
+        if (!request.signal.aborted) setDetails(data);
+      })
+      .catch((failure: Error) => {
+        if (!request.signal.aborted) setError(failure.message);
+      });
+    return () => request.abort();
+  }, [manga, attempt]);
 
   return (
-    <div className="min-h-screen bg-[#060010] text-white p-10 flex flex-col md:flex-row items-start justify-center gap-12">
-      {/* Left: Enlarged Cover */}
-      <div className="flex-shrink-0 w-full md:w-[40%] flex justify-center">
-        <img
-          src={mangaData.image}
-          alt={mangaData.name}
-          className="w-[80%] md:w-full h-auto rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.8)] object-cover"
-        />
-      </div>
-
-      {/* Right: Info and Chapters */}
-      <div className="w-full md:w-[55%] flex flex-col justify-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-6 text-purple-400">
-          {mangaData.name}
-        </h1>
-
-        <p className="text-gray-300 mb-10 text-lg leading-relaxed">
-          {mangaData.description}
-        </p>
-
-        <h2 className="text-2xl font-semibold mb-4 text-purple-300">
-          Chapters
-        </h2>
-
-        <AnimatedList
-          items={mangaData.chapters}
-          onItemSelect={(item, index) => {
-            console.log(`Selected chapter ${index + 1}: ${item}`);
-          }}
-          showGradients={true}
-          enableArrowNavigation={true}
-          displayScrollbar={true}
-        />
-      </div>
+    <div className="mx-auto min-h-screen max-w-6xl px-5 pb-16 pt-28 sm:px-8">
+      <Link href="/read" className="text-sm font-medium text-violet-300 hover:text-white">← Browse manga</Link>
+      {error ? (
+        <div className="mt-6">
+          <p role="alert" className="text-rose-300">{error}</p>
+          <button type="button" className="mt-3 text-violet-200 underline" onClick={() => {
+            setError("");
+            setAttempt((value) => value + 1);
+          }}>Try again</button>
+        </div>
+      ) : !details ? (
+        <p role="status" className="mt-6 text-zinc-300">Loading manga details…</p>
+      ) : (
+        <div className="mt-6 grid gap-7 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10">
+          {details.image && (
+            <img
+              src={details.image}
+              alt=""
+              className="aspect-[2/3] w-44 rounded-xl border border-white/10 object-cover md:w-full"
+            />
+          )}
+          <div className={details.image ? "" : "md:col-span-2"}>
+            <h1 className="text-3xl font-semibold sm:text-5xl">{details.name}</h1>
+            {details.description && (
+              <p className="mt-5 max-w-3xl whitespace-pre-line leading-relaxed text-zinc-300">{details.description}</p>
+            )}
+            <div className="mb-3 mt-9 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-xl font-semibold">Chapters</h2>
+              {details.chapterEntries.length > 0 && (
+                <Link href={`/download?${new URLSearchParams({ manga: details.slug })}`} className="text-sm text-violet-200 hover:text-white">Download PDF</Link>
+              )}
+            </div>
+            {details.chapterEntries.length === 0 ? <p className="text-zinc-300">No chapters listed.</p> : (
+              <ol className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10">
+                {details.chapterEntries.map((chapter) => (
+                  <li key={chapter.id}>
+                    <Link
+                      href={chapterHref(details.slug, chapter.id)}
+                      prefetch={false}
+                      className="block px-4 py-3 text-sm text-zinc-100 hover:bg-violet-400/10 focus-visible:bg-violet-400/10"
+                    >
+                      {chapter.title}
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
