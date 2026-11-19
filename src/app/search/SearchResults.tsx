@@ -56,7 +56,7 @@ export default function SearchResults({ query }: { query: string }) {
           ))}
         </ul>
       )}
-      {loading && <p role="status" className="mt-6 text-zinc-300">Searching MangaRead…</p>}
+      {loading && <p role="status" className="mt-6 text-zinc-300">Searching manga sources…</p>}
       {error && <p role="alert" className="mt-6 text-rose-300">{error}</p>}
       {(error || hasMore) && (
         <button

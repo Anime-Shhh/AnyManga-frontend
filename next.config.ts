@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const backend = (process.env.MANGA_API_ORIGIN || "http://127.0.0.1:8080").replace(/\/$/, "");
-const endpoints = ["search", "featured", "popular", "category", "mangapage", "chapterimages", "info", "chapters"];
+const endpoints = ["search", "featured", "popular", "category", "mangapage", "chapterimages", "info", "chapters", "image"];
 
 const nextConfig: NextConfig = {
   async rewrites() {

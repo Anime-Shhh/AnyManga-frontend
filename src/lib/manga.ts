@@ -16,6 +16,9 @@ export interface MangaDetails {
   image: string;
   description: string;
   chapterEntries: ChapterLink[];
+  language?: string;
+  languages?: string[];
+  sources?: { id: string; name: string; chapters: number }[];
 }
 
 export interface ChapterData {
@@ -23,6 +26,10 @@ export interface ChapterData {
   slug: string;
   images: string[];
   chapter: ChapterLink;
+  provider?: string;
+  externalUrl?: string;
+  groups?: string[];
+  language?: string;
   previous: ChapterLink | null;
   next: ChapterLink | null;
 }
@@ -37,8 +44,8 @@ export function mangaHref(slug: string) {
   return `/read/${encodeURIComponent(slug)}`;
 }
 
-export function chapterHref(slug: string, chapter: string) {
-  return `${mangaHref(slug)}/${encodeURIComponent(chapter)}`;
+export function chapterHref(slug: string, chapter: string, language = "en") {
+  return `${mangaHref(slug)}/${encodeURIComponent(chapter)}${language === "en" ? "" : `?language=${encodeURIComponent(language)}`}`;
 }
 
 export async function mangaAPI<T>(
@@ -58,24 +65,24 @@ export async function mangaAPI<T>(
 const chapterCache = new Map<string, { data: ChapterData; expires: number }>();
 const chapterRequests = new Map<string, Promise<ChapterData>>();
 
-export function getCachedChapter(manga: string, chapter: string) {
-  const key = chapterHref(manga, chapter);
+export function getCachedChapter(manga: string, chapter: string, language = "en") {
+  const key = chapterHref(manga, chapter, language);
   const entry = chapterCache.get(key);
   if (entry && entry.expires > Date.now()) return entry.data;
   chapterCache.delete(key);
 }
 
-export function loadChapter(manga: string, chapter: string): Promise<ChapterData> {
-  const cached = getCachedChapter(manga, chapter);
+export function loadChapter(manga: string, chapter: string, language = "en", skip = ""): Promise<ChapterData> {
+  const cached = skip ? undefined : getCachedChapter(manga, chapter, language);
   if (cached) return Promise.resolve(cached);
 
-  const key = chapterHref(manga, chapter);
+  const key = chapterHref(manga, chapter, language) + (skip ? `&skip=${skip}` : "");
   const pending = chapterRequests.get(key);
   if (pending) return pending;
 
-  const request = mangaAPI<ChapterData>("chapterimages", { manga, chapter })
+  const request = mangaAPI<ChapterData>("chapterimages", { manga, chapter, language, ...(skip ? { skip } : {}) })
     .then((data) => {
-      const canonicalKey = chapterHref(data.slug, data.chapter.id);
+      const canonicalKey = chapterHref(data.slug, data.chapter.id, language);
       const entry = { data, expires: Date.now() + 2 * 60_000 };
       for (const entryKey of new Set([key, canonicalKey])) {
         chapterCache.delete(entryKey);
@@ -93,3 +100,27 @@ export function loadChapter(manga: string, chapter: string): Promise<ChapterData
   chapterRequests.set(key, request);
   return request;
 }
+
+// Keep the preloads alive until they finish; subsequent <img> requests reuse browser cache.
+const imagePreloads = new Map<string, Promise<void>>();
+export function canPrefetchChapter() {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  return !connection?.saveData && !connection?.effectiveType?.endsWith("2g");
+}
+export function warmChapterImages(chapter: ChapterData) {
+  return Promise.all(chapter.images.slice(0, 3).map((src) => {
+    const existing = imagePreloads.get(src);
+    if (existing) return existing;
+    const pending = new Promise<void>((resolve, reject) => {
+      const image = new Image();
+      image.fetchPriority = "low";
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Image preload failed"));
+      image.src = src;
+    }).catch(() => { imagePreloads.delete(src); });
+    imagePreloads.set(src, pending);
+    while (imagePreloads.size > 72) imagePreloads.delete(imagePreloads.keys().next().value!);
+    return pending;
+  }));
+}
+export const sourceNames: Record<string, string> = { weebcentral: "WeebCentral", mangapill: "MangaPill", mangaread: "MangaRead", mangadex: "MangaDex" };

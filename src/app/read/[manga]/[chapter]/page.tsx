@@ -1,10 +1,12 @@
 import ChapterReader from "./ChapterReader";
 
 export default async function ChapterPage({
-  params,
+  params, searchParams,
 }: {
+  searchParams: Promise<{ language?: string }>;
   params: Promise<{ manga: string; chapter: string }>;
 }) {
   const { manga, chapter } = await params;
-  return <ChapterReader key={JSON.stringify([manga, chapter])} manga={manga} chapter={chapter} />;
+  const { language = "en" } = await searchParams;
+  return <ChapterReader key={JSON.stringify([manga, chapter, language])} manga={manga} chapter={chapter} language={language} />;
 }
