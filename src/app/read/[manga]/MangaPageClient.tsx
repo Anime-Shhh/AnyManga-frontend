@@ -1,7 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Covers come from the manga service. */
 import Link from "next/link";
+import MangaImage from "@/components/MangaImage";
 import { useEffect, useState } from "react";
 import { chapterHref, mangaAPI, type MangaDetails } from "@/lib/manga";
 
@@ -39,8 +39,8 @@ export default function MangaPageClient({ manga }: { manga: string }) {
       ) : (
         <div className="mt-6 grid gap-7 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10">
           {details.image && (
-            <img
-              src={details.image}
+            <MangaImage
+              src={details.image} fallbackSrc={details.imageFallback}
               alt=""
               className="aspect-[2/3] w-44 rounded-xl border border-white/10 object-cover md:w-full"
             />

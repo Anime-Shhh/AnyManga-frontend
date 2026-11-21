@@ -1,0 +1,17 @@
+name: Production backend health
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production PC origin
+        shell: bash
+        run: |
+          status=$(curl --silent --show-error --max-time 20 --retry 2 --dump-header headers.txt --output /dev/null --write-out '%{http_code}' 'https://anymanga.vercel.app/api/manga/health')
+          test "$status" = 204
+          grep -i '^x-anymanga-backend-id: windows-home-' headers.txt

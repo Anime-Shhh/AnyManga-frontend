@@ -1,7 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- MangaRead serves remote covers directly. */
 import Link from "next/link";
+import MangaImage from "@/components/MangaImage";
 import { useEffect, useState } from "react";
 import { mangaAPI, mangaHref, type MangaCard, type SearchResults as Results } from "@/lib/manga";
 
@@ -48,7 +48,7 @@ export default function SearchResults({ query }: { query: string }) {
             <li key={item.slug}>
               <Link href={mangaHref(item.slug)} prefetch={false} className="group block rounded-xl focus-visible:outline-2 focus-visible:outline-violet-300">
                 <div className="aspect-[2/3] overflow-hidden rounded-xl border border-white/10 bg-violet-950/40 group-hover:border-violet-400">
-                  {item.image && <img src={item.image} alt="" className="size-full object-cover" loading="lazy" />}
+                  {item.image && <MangaImage src={item.image} fallbackSrc={item.imageFallback} alt="" className="size-full object-cover" loading="lazy" />}
                 </div>
                 <p title={item.title} className="mt-2 line-clamp-3 font-medium group-hover:text-violet-200">{item.title}</p>
               </Link>

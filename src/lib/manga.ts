@@ -1,7 +1,9 @@
+import { preloadImage } from "@/lib/images";
 export interface MangaCard {
   slug: string;
   title: string;
   image: string;
+  imageFallback?: string;
   chapters: string[];
 }
 
@@ -14,6 +16,7 @@ export interface MangaDetails {
   slug: string;
   name: string;
   image: string;
+  imageFallback?: string;
   description: string;
   chapterEntries: ChapterLink[];
   language?: string;
@@ -25,6 +28,7 @@ export interface ChapterData {
   manga: string;
   slug: string;
   images: string[];
+  imageFallbacks?: Record<string, string>;
   chapter: ChapterLink;
   provider?: string;
   externalUrl?: string;
@@ -72,19 +76,19 @@ export function getCachedChapter(manga: string, chapter: string, language = "en"
   chapterCache.delete(key);
 }
 
-export function loadChapter(manga: string, chapter: string, language = "en", skip = ""): Promise<ChapterData> {
-  const cached = skip ? undefined : getCachedChapter(manga, chapter, language);
+export function loadChapter(manga: string, chapter: string, language = "en", skip = "", refresh = false): Promise<ChapterData> {
+  const cached = skip || refresh ? undefined : getCachedChapter(manga, chapter, language);
   if (cached) return Promise.resolve(cached);
 
-  const key = chapterHref(manga, chapter, language) + (skip ? `&skip=${skip}` : "");
+  const key = chapterHref(manga, chapter, language) + (skip ? `&skip=${skip}` : "") + (refresh ? "&refresh=1" : "");
   const pending = chapterRequests.get(key);
   if (pending) return pending;
 
-  const request = mangaAPI<ChapterData>("chapterimages", { manga, chapter, language, ...(skip ? { skip } : {}) })
+  const request = mangaAPI<ChapterData>("chapterimages", { manga, chapter, language, ...(skip ? { skip } : {}), ...(refresh ? { refresh: "1" } : {}) })
     .then((data) => {
       const canonicalKey = chapterHref(data.slug, data.chapter.id, language);
       const entry = { data, expires: Date.now() + 2 * 60_000 };
-      for (const entryKey of new Set([key, canonicalKey])) {
+      for (const entryKey of new Set([key, canonicalKey, chapterHref(manga, chapter, language)])) {
         chapterCache.delete(entryKey);
         chapterCache.set(entryKey, entry);
       }
@@ -101,26 +105,11 @@ export function loadChapter(manga: string, chapter: string, language = "en", ski
   return request;
 }
 
-// Keep the preloads alive until they finish; subsequent <img> requests reuse browser cache.
-const imagePreloads = new Map<string, Promise<void>>();
 export function canPrefetchChapter() {
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
   return !connection?.saveData && !connection?.effectiveType?.endsWith("2g");
 }
 export function warmChapterImages(chapter: ChapterData) {
-  return Promise.all(chapter.images.slice(0, 3).map((src) => {
-    const existing = imagePreloads.get(src);
-    if (existing) return existing;
-    const pending = new Promise<void>((resolve, reject) => {
-      const image = new Image();
-      image.fetchPriority = "low";
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("Image preload failed"));
-      image.src = src;
-    }).catch(() => { imagePreloads.delete(src); });
-    imagePreloads.set(src, pending);
-    while (imagePreloads.size > 72) imagePreloads.delete(imagePreloads.keys().next().value!);
-    return pending;
-  }));
+  return Promise.all(chapter.images.slice(0, 3).map((src) => preloadImage(src, chapter.imageFallbacks?.[src])));
 }
 export const sourceNames: Record<string, string> = { weebcentral: "WeebCentral", mangapill: "MangaPill", mangaread: "MangaRead", mangadex: "MangaDex" };

@@ -1,6 +1,8 @@
 # Hosting the Go API on your PC
 
-Recommended setup:
+Current deployment target: native Windows service through Tailscale Funnel. See the implementation notes below.
+
+Alternative setup:
 
 ```
 Browser → Vercel frontend → HTTPS api.your-domain.com
@@ -35,3 +37,16 @@ The current production configuration deploys Go alongside Next.js on Vercel. The
 Keep the current `vercel.json` until you complete the tunnel setup. To roll back, restore it, remove `MANGA_API_ORIGIN`, and redeploy. No router ports or tunnel configuration were changed as part of this code update.
 
 References: [Cloudflare Tunnel concepts](https://developers.cloudflare.com/tunnel/concepts/), [publish an application](https://developers.cloudflare.com/tunnel/get-started/), [Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel), [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve).
+
+
+## Native Windows deployment (no PC restart)
+
+The PC runtime is a Windows amd64 Go executable registered as `AnyMangaBackend` under LocalService. No Docker, WSL or compiler is needed on Windows. The backend repository's `DEPLOYMENT.md` describes versioned release installation, restricted files, application-only recovery and rollback. Windows, WSL, Tailscale, networking, SSH, Codex, and the Windows login session must remain running throughout setup.
+
+Production requests remain same-origin at `/api/manga/*`. A narrow server-only Next.js handler forwards allowlisted requests to `MANGA_API_ORIGIN` and injects `MANGA_API_KEY`. Both variables are server-only Vercel settings. Never use a NEXT_PUBLIC variable for the key. The current host target is `https://animeshh-pc.tailda0b8a.ts.net`, forwarding to Windows loopback port 8080 through an authorized persistent Funnel.
+
+Replace the Vercel Go-service route only when the Windows backend is healthy and reachable. Health returns 204 with `X-AnyManga-Backend-ID`. Match a production request's `X-AnyManga-Request-ID` against the PC log to prove cutover. Keep the previous Vercel deployment as a rollback target and do not silently fail over when the PC is offline.
+
+MangaRead images passed real browser embedding tests and load directly with no-referrer, reducing home upload traffic. Direct images have a same-origin restricted proxy fallback. MangaPill and WeebCentral CDNs were blocked by browser opaque-response protection, so those sources and MangaDex remain proxied. Failed fallback images trigger one metadata refresh before the existing source-switch action. The first three next-chapter images still preload only near the end.
+
+`/admin/status` is available only with backend authentication and is not forwarded to browsers. It exposes request/cache/proxy counters for operational checks. GitHub Actions run frontend checks and a 15-minute production-origin health check. Native Windows artifacts are built by backend CI; deployment remains controlled. Future Windows boot recovery is configured but not tested during remote setup.

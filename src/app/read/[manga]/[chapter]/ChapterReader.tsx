@@ -1,7 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Chapter pages are served by the manga image proxy. */
 import Link from "next/link";
+import MangaImage from "@/components/MangaImage";
 import { ArrowLeft, ArrowRight, BookOpen, House } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { chapterHref, getCachedChapter, loadChapter, mangaHref, canPrefetchChapter, warmChapterImages, sourceNames, type ChapterData } from "@/lib/manga";
@@ -39,7 +39,15 @@ export default function ChapterReader({ manga, chapter, language = "en" }: { man
 
   const nearEnd = useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = useState(false);
+  const [imageGeneration, setImageGeneration] = useState(0);
   const skipped = useRef<string[]>([]);
+  const refreshed = useRef(false);
+  async function imageFailed() {
+    if (refreshed.current) { setImageError(true); return; }
+    refreshed.current = true;
+    try { setData(await loadChapter(manga, chapter, language, skipped.current.join(","), true)); setImageGeneration((value) => value + 1); }
+    catch { setImageError(true); }
+  }
 
   useEffect(() => {
     let current = true;
@@ -81,6 +89,7 @@ export default function ChapterReader({ manga, chapter, language = "en" }: { man
     if (!data?.provider) return;
     skipped.current.push(data.provider);
     setImageError(false);
+    refreshed.current = false;
     try {
       setData(await loadChapter(manga, chapter, language, skipped.current.join(",")));
     } catch (failure) {
@@ -113,14 +122,15 @@ export default function ChapterReader({ manga, chapter, language = "en" }: { man
           </header>
           <div className="mx-auto max-w-3xl bg-black">
             {data.images.map((src, index) => (
-              <div key={`${index}-${src}`} ref={index === Math.max(0, data.images.length - 3) ? nearEnd : undefined}>
-              <img
+              <div key={`${imageGeneration}-${index}-${src}`} ref={index === Math.max(0, data.images.length - 3) ? nearEnd : undefined}>
+              <MangaImage
                 src={src}
+                fallbackSrc={data.imageFallbacks?.[src]}
                 alt={`Page ${index + 1}`}
                 className="block h-auto w-full"
                 style={{ minHeight: "50vh" }}
                 onLoad={(event) => { event.currentTarget.style.minHeight = ""; }}
-                onError={() => setImageError(true)}
+                onError={imageFailed}
                 loading={index === 0 ? "eager" : "lazy"}
                 fetchPriority={index === 0 ? "high" : "auto"}
                 decoding="async"

@@ -1,9 +1,9 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- MangaRead serves remote covers directly. */
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
+import MangaImage from "@/components/MangaImage";
 import { mangaAPI, mangaHref, type MangaCard, type MangaDetails } from "@/lib/manga";
 
 type BrowseFeed = "featured" | "popular" | "manhwa" | "manhua";
@@ -81,7 +81,7 @@ function BrowseRow({ title, feed }: { title: string; feed: BrowseFeed }) {
                   className="block overflow-hidden rounded-2xl border border-transparent bg-[#100020] shadow-lg transition hover:border-[#5227FF] focus-visible:border-violet-300"
                 >
                   <div className="h-56 bg-violet-950/40 sm:h-72">
-                    {manga.image && <img src={manga.image} alt="" loading="lazy" className="size-full object-cover" />}
+                    {manga.image && <MangaImage src={manga.image} fallbackSrc={manga.imageFallback} alt="" loading="lazy" className="size-full object-cover" />}
                   </div>
                   <div className="min-h-24 p-4">
                     <h3 className="truncate text-lg font-semibold text-white" title={manga.title}>{manga.title}</h3>
@@ -220,7 +220,7 @@ function FeaturedCarousel() {
                 onClick={() => setCurrentIndex((currentIndex + index + 1) % count)}
                 className={`overflow-hidden rounded-lg border border-white/10 bg-black/30 text-left shadow-lg backdrop-blur-sm transition hover:border-white/30 focus-visible:border-violet-300 ${index >= 2 ? "hidden lg:block" : ""}`}
               >
-                {item.image && <img src={item.image} alt="" className="h-24 w-24 object-cover md:h-32 md:w-32 xl:h-44 xl:w-44" />}
+                {item.image && <MangaImage src={item.image} fallbackSrc={item.imageFallback} alt="" className="h-24 w-24 object-cover md:h-32 md:w-32 xl:h-44 xl:w-44" />}
                 <span className="block w-24 truncate p-2 text-xs font-semibold text-white md:w-32 xl:w-44 xl:p-3">{item.title}</span>
               </motion.button>
             ))}
