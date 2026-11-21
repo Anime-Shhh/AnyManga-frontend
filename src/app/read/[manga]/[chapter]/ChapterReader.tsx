@@ -1,38 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import MangaImage from "@/components/MangaImage";
-import { ArrowLeft, ArrowRight, BookOpen, House } from "lucide-react";
+import { useNavigationVisibility } from "@/components/NavigationVisibility";
+import { ReaderNav, ReaderOverlay } from "@/components/ReaderNavigation";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { chapterHref, getCachedChapter, loadChapter, mangaHref, canPrefetchChapter, warmChapterImages, sourceNames, type ChapterData } from "@/lib/manga";
+import { getCachedChapter, loadChapter, canPrefetchChapter, warmChapterImages, sourceNames, type ChapterData } from "@/lib/manga";
 
 const button = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm font-medium text-zinc-100 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-violet-300 sm:px-4";
 
-function ReaderNav({ manga, data, bottom = false }: { manga: string; data?: ChapterData; bottom?: boolean }) {
-  const slug = data?.slug ?? manga;
-  return (
-    <nav aria-label={bottom ? "Chapter navigation at end" : "Chapter navigation"} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center">
-      <Link href="/" className={button}><House size={17} aria-hidden /> Home</Link>
-      <Link href={mangaHref(slug)} className={button}><BookOpen size={17} aria-hidden /> Manga</Link>
-      {data && (
-        <>
-          {data.previous ? (
-            <Link href={chapterHref(slug, data.previous.id, data.language)} prefetch={false} className={button} rel="prev">
-              <ArrowLeft size={17} aria-hidden /> Previous chapter
-            </Link>
-          ) : <button type="button" disabled className={`${button} opacity-40`}><ArrowLeft size={17} aria-hidden /> Previous chapter</button>}
-          {data.next ? (
-            <Link href={chapterHref(slug, data.next.id, data.language)} prefetch={false} className={button} rel="next">
-              Next chapter <ArrowRight size={17} aria-hidden />
-            </Link>
-          ) : <button type="button" disabled className={`${button} opacity-40`}>Next chapter <ArrowRight size={17} aria-hidden /></button>}
-        </>
-      )}
-    </nav>
-  );
-}
-
 export default function ChapterReader({ manga, chapter, language = "en" }: { manga: string; chapter: string; language?: string }) {
+  const { syncScroll, mobile } = useNavigationVisibility();
   const [data, setData] = useState<ChapterData | undefined>(() => getCachedChapter(manga, chapter, language));
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -99,7 +77,8 @@ export default function ChapterReader({ manga, chapter, language = "en" }: { man
   }
 
   return (
-    <article className="mx-auto min-h-screen max-w-5xl px-3 pb-14 pt-24 sm:px-6">
+    <article data-reader-surface className={`mx-auto min-h-screen max-w-5xl px-3 pb-14 pt-24 sm:px-6 ${mobile ? "" : "md:pr-24 xl:pr-6"}`}>
+      <ReaderOverlay manga={manga} data={data} />
       <ReaderNav manga={manga} data={data} />
       {error ? (
         <div className="mt-9 text-center">
@@ -129,7 +108,7 @@ export default function ChapterReader({ manga, chapter, language = "en" }: { man
                 alt={`Page ${index + 1}`}
                 className="block h-auto w-full"
                 style={{ minHeight: "50vh" }}
-                onLoad={(event) => { event.currentTarget.style.minHeight = ""; }}
+                onLoad={(event) => { event.currentTarget.style.minHeight = ""; syncScroll(); }}
                 onError={imageFailed}
                 loading={index === 0 ? "eager" : "lazy"}
                 fetchPriority={index === 0 ? "high" : "auto"}

@@ -6,6 +6,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
 try{
  const page=await browser.newPage();let refreshes=0;
  const fixture={manga:'Image fixture',slug:'image-fixture',provider:'mangaread',chapter:{id:'chapter-1',title:'Chapter 1'},images:['https://direct-image.invalid/page.png'],imageFallbacks:{'https://direct-image.invalid/page.png':'/fixture-proxy.png'},next:null,previous:null};
+ await page.route('**/api/manga/health',r=>r.fulfill({status:204}));
  await page.route('**/api/manga/chapterimages?**',route=>{if(new URL(route.request().url()).searchParams.get('refresh')==='1')refreshes++;return route.fulfill({json:fixture})});
  await page.route('https://direct-image.invalid/**',route=>route.abort());
  await page.route('**/fixture-proxy.png',route=>route.fulfill({contentType:'image/png',body:png}));

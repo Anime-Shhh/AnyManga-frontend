@@ -5,6 +5,7 @@ try {
  const page=await browser.newPage({viewport:{width:1100,height:800}});
  const metadata=[];const images=[];const failures=[];
  page.on('pageerror',error=>failures.push(error.message));
+ await page.route('**/api/manga/health',r=>r.fulfill({status:204}));
  await page.route('**/api/manga/chapterimages?**',route=>{
   const u=new URL(route.request().url());const id=u.searchParams.get('chapter');metadata.push(id);
   const n=Number(id.split('-')[1]);

@@ -34,3 +34,5 @@ Build/start the app locally, then run `ANYMANGA_TEST_URL=http://localhost:3000 C
 The [PC hosting guide](SELF_HOSTING.md) explains Cloudflare Tunnel, private Tailscale administration, and how to switch Vercel's API routing after your PC is ready.
 
 `npm run test:images` checks direct-image failure, restricted proxy fallback, and one bounded metadata refresh before source switching. Both browser regressions also run in GitHub CI against a local production build.
+
+`npm run test:controls` checks the shared navbar/reader visibility, desktop rail, phone tap-to-reveal disclosure menu, swipe handling, chapter links, and simulated server-down/recovery states on Home, Browse and chapter pages. It never stops the PC backend. Server health is checked every 30 seconds while those pages are visible, with a short timeout and a link to the backend self-hosting guide when unavailable.

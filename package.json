@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:reader": "node tests/reader-prefetch.mjs",
-    "test:images": "node tests/image-delivery.mjs"
+    "test:images": "node tests/image-delivery.mjs",
+    "test:controls": "node tests/reader-controls.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

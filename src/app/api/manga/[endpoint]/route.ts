@@ -47,7 +47,7 @@ async function forward(request: Request, context: { params: Promise<{ endpoint: 
     for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   }
   try {
-    const response = await fetch(target, { method: request.method, headers, body: body as BodyInit | undefined, redirect: "manual", cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(58_000)]) });
+    const response = await fetch(target, { method: request.method, headers, body: body as BodyInit | undefined, redirect: "manual", cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(endpoint === "health" ? 5_000 : 58_000)]) });
     if (response.status >= 300 && response.status < 400) { await response.body?.cancel(); throw new Error("Unexpected origin redirect"); }
     const output = new Headers();
     for (const name of forwardedHeaders) { const value = response.headers.get(name); if (value) output.set(name, value); }
