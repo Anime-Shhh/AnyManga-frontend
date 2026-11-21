@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Header from "@/components/Header";
 import { NavigationVisibilityProvider } from "@/components/NavigationVisibility";
 import ServerStatusNotice from "@/components/ServerStatusNotice";
+import SiteAnalytics from "@/components/SiteAnalytics";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ServerStatusNotice />
           <main>{children}</main>
         </NavigationVisibilityProvider>
+        <SiteAnalytics />
       </body>
     </html>
   );

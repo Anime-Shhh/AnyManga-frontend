@@ -2,6 +2,8 @@
 
 AnyManga is a Next.js manga browser and reader backed by the separate [AnyManga Go API](https://github.com/Anime-Shhh/AnyManga-Backend).
 
+See [Analytics and monitoring](ANALYTICS.md) for visitor traffic, page performance, Vercel usage, and private PC-backend counters.
+
 ## Run locally
 
 Initialize the pinned Go backend and run it in one terminal.
