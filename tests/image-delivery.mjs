@@ -1,6 +1,6 @@
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
-const browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE??'/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',args:['--disable-gpu','--no-first-run']});
+const browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE??'/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',args:[...(process.env.CI?['--no-sandbox']:[]),'--disable-gpu','--no-first-run']});
 const base=process.env.ANYMANGA_TEST_URL??'http://127.0.0.1:3002';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2uCAAAAAASUVORK5CYII=','base64');
 try{

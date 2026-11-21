@@ -1,6 +1,6 @@
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
-const browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE ?? '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',args:['--disable-gpu','--no-first-run','--disable-background-networking']});
+const browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE ?? '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',args:[...(process.env.CI?['--no-sandbox']:[]),'--disable-gpu','--no-first-run','--disable-background-networking']});
 try {
  const page=await browser.newPage({viewport:{width:1100,height:800}});
  const metadata=[];const images=[];const failures=[];

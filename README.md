@@ -32,3 +32,5 @@ To validate a deployment, call `/api/manga/health`, run a title search, open a n
 Build/start the app locally, then run `ANYMANGA_TEST_URL=http://localhost:3000 CHROME_EXECUTABLE=/path/to/chrome npm run test:reader`. On macOS the script defaults to installed Brave. The test mocks manga/image responses, verifies metadata warms in the background, confirms next-chapter images stay unloaded until near the end, and checks that Next/Previous reuse cached metadata. It requires a running frontend; it does not contact manga providers.
 
 The [PC hosting guide](SELF_HOSTING.md) explains Cloudflare Tunnel, private Tailscale administration, and how to switch Vercel's API routing after your PC is ready.
+
+`npm run test:images` checks direct-image failure, restricted proxy fallback, and one bounded metadata refresh before source switching. Both browser regressions also run in GitHub CI against a local production build.
