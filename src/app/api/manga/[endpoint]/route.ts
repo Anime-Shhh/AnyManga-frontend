@@ -3,14 +3,14 @@ import { isIP } from "node:net";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const methods: Record<string, readonly string[]> = {
   health: ["GET"], search: ["GET"], featured: ["GET"], popular: ["GET"],
   category: ["GET"], mangapage: ["GET"], chapterimages: ["GET", "POST"],
   info: ["GET"], chapters: ["POST"], image: ["GET"],
 };
-const forwardedHeaders = ["content-type", "content-disposition", "content-length", "cache-control", "retry-after", "x-content-type-options", "x-anymanga-backend-id", "x-anymanga-request-id"];
+const forwardedHeaders = ["content-type", "content-disposition", "content-length", "cache-control", "retry-after", "x-content-type-options", "x-anymanga-backend-id", "x-anymanga-request-id", "x-anymanga-pages", "x-accel-buffering"];
 
 async function forward(request: Request, context: { params: Promise<{ endpoint: string }> }) {
   const { endpoint } = await context.params;
@@ -47,12 +47,12 @@ async function forward(request: Request, context: { params: Promise<{ endpoint: 
     for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   }
   try {
-    const response = await fetch(target, { method: request.method, headers, body: body as BodyInit | undefined, redirect: "manual", cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(endpoint === "health" ? 5_000 : 58_000)]) });
+    const response = await fetch(target, { method: request.method, headers, body: body as BodyInit | undefined, redirect: "manual", cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(endpoint === "health" ? 5_000 : endpoint === "chapters" ? 295_000 : 58_000)]) });
     if (response.status >= 300 && response.status < 400) { await response.body?.cancel(); throw new Error("Unexpected origin redirect"); }
     const output = new Headers();
     for (const name of forwardedHeaders) { const value = response.headers.get(name); if (value) output.set(name, value); }
     if (response.headers.get("content-encoding")) output.delete("content-length");
-    if (endpoint !== "image") output.set("Cache-Control", "no-store");
+    if (endpoint !== "image") output.set("Cache-Control", endpoint === "chapters" ? "no-store, no-transform" : "no-store");
     return new Response(response.body, { status: response.status, headers: output });
   } catch {
     return Response.json({ error: "The manga service is temporarily unavailable. Please try again." }, { status: 503, headers: { "Retry-After": "5", "Cache-Control": "no-store" } });

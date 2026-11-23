@@ -22,6 +22,7 @@ jobs:
           CI: 'true'
           CHROME_EXECUTABLE: /usr/bin/google-chrome
           ANYMANGA_TEST_URL: http://127.0.0.1:3002
+          MANGA_API_ORIGIN: http://127.0.0.1:18080
         run: |
           npm run start -- -p 3002 > /tmp/anymanga-frontend.log 2>&1 &
           app_pid=$!
@@ -33,3 +34,4 @@ jobs:
           npm run test:reader
           npm run test:images
           npm run test:controls
+          npm run test:download
