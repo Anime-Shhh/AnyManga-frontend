@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import MangaImage from "@/components/MangaImage";
-import { mangaAPI, mangaHref, type MangaCard, type MangaDetails } from "@/lib/manga";
+import { mangaAPI, mangaHref, type MangaCard, sourceNames } from "@/lib/manga";
 
-type BrowseFeed = "featured" | "popular" | "manhwa" | "manhua";
+import { useDiscovery, type DiscoveryCard } from "@/lib/use-discovery";
+
+type BrowseFeed = "manhwa" | "manhua";
 
 const browseRows = [
-  { feed: "popular", title: "Popular Manga" },
   { feed: "manhwa", title: "Manhwa" },
   { feed: "manhua", title: "Manhua" },
 ] as const;
@@ -23,8 +24,7 @@ function useBrowseFeed(feed: BrowseFeed) {
 
   useEffect(() => {
     const request = new AbortController();
-    const category = feed === "manhwa" || feed === "manhua";
-    mangaAPI<MangaCard[]>(category ? "category" : feed, category ? { name: feed } : undefined, request.signal)
+    mangaAPI<MangaCard[]>("category", { name: feed }, request.signal)
       .then((data) => {
         if (!request.signal.aborted) setItems(data);
       })
@@ -51,8 +51,24 @@ function FeedStatus({ error, retry, label }: { error: string; retry: () => void;
   ) : <p role="status" className="text-zinc-300">Loading {label}…</p>;
 }
 
-function BrowseRow({ title, feed }: { title: string; feed: BrowseFeed }) {
-  const { items, error, retry } = useBrowseFeed(feed);
+type FeedProps = { items?: MangaCard[]; error: string; retry: () => void };
+function CardSignal({ manga, kind }: { manga: MangaCard; kind?: string }) {
+  const card = manga as Partial<DiscoveryCard>;
+  const signal = card.signals?.[0];
+  if (!signal) return null;
+  const stats = card.signals?.find(item => item.followers);
+  const date = kind === "recent" ? card.updatedAt : kind === "new" ? card.addedAt : undefined;
+  return <div className="mt-2 space-y-1 text-xs leading-relaxed text-violet-200/80">
+    <p>{kind === "popular" && signal.rank ? `#${signal.rank} · ` : ""}{signal.label} · {sourceNames[signal.provider] ?? signal.provider}{card.signals && card.signals.length > 1 ? ` +${card.signals.length - 1}` : ""}</p>
+    {stats?.followers ? <p>{stats.followers.toLocaleString("en-US")} MangaDex followers{stats.rating ? ` · ${stats.rating.toFixed(1)}/10` : ""}</p> : null}
+    {date && <time dateTime={date}>{kind === "new" ? "Cataloged " : "Updated "}{new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</time>}
+  </div>;
+}
+function CuratedRow({ title, feed }: { title: string; feed: BrowseFeed }) {
+  const result = useBrowseFeed(feed);
+  return <BrowseRow title={title} feed={feed} {...result} />;
+}
+function BrowseRow({ title, feed, description, items, error, retry }: FeedProps & { title: string; feed: string; description?: string }) {
   const rail = useRef<HTMLUListElement>(null);
   const reduceMotion = useReducedMotion();
 
@@ -67,10 +83,12 @@ function BrowseRow({ title, feed }: { title: string; feed: BrowseFeed }) {
 
   return (
     <section className="relative pt-12 sm:pt-16" aria-labelledby={`heading-${feed}`}>
-      <h2 id={`heading-${feed}`} className="mb-6 px-5 text-3xl font-bold text-white sm:px-8 sm:text-4xl">{title}</h2>
+      <h2 id={`heading-${feed}`} className="px-5 text-3xl font-bold text-white sm:px-8 sm:text-4xl">{title}</h2>
+      {description && <p className="mt-2 max-w-3xl px-5 text-sm leading-relaxed text-zinc-400 sm:px-8">{description}</p>}
+      <div className="h-6" />
       {!items ? (
         <div className="px-5 sm:px-8"><FeedStatus error={error} retry={retry} label={title} /></div>
-      ) : (
+      ) : items.length === 0 ? <p className="px-5 text-zinc-400 sm:px-8">No picks available right now.</p> : (
         <div className="relative">
           <ul ref={rail} className="flex snap-x gap-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:gap-6 sm:px-8 [&::-webkit-scrollbar]:hidden">
             {items.map((manga) => (
@@ -84,10 +102,11 @@ function BrowseRow({ title, feed }: { title: string; feed: BrowseFeed }) {
                     {manga.image && <MangaImage src={manga.image} fallbackSrc={manga.imageFallback} alt="" loading="lazy" className="size-full object-cover" />}
                   </div>
                   <div className="min-h-24 p-4">
-                    <h3 className="truncate text-lg font-semibold text-white" title={manga.title}>{manga.title}</h3>
-                    {manga.chapters.slice(0, 5).map((chapter, i) => (
+                    <h3 className="line-clamp-2 text-lg font-semibold text-white" title={manga.title}>{manga.title}</h3>
+                    {manga.chapters.slice(0, 2).map((chapter, i) => (
                       <p key={`${i}-${chapter}`} className="mt-1 truncate text-sm text-gray-400">• {chapter}</p>
                     ))}
+                    <CardSignal manga={manga} kind={feed} />
                   </div>
                 </Link>
               </li>
@@ -107,18 +126,14 @@ function BrowseRow({ title, feed }: { title: string; feed: BrowseFeed }) {
   );
 }
 
-function FeaturedCarousel() {
-  const { items, error, retry } = useBrowseFeed("featured");
+function FeaturedCarousel({ items, error, retry }: { items?: DiscoveryCard[]; error: string; retry: () => void }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [details, setDetails] = useState<MangaDetails>();
-  const detailCache = useRef(new Map<string, MangaDetails>());
   const reduceMotion = useReducedMotion();
   const count = items?.length ?? 0;
-  const currentItem = items?.[currentIndex];
-  const currentSlug = currentItem?.slug;
+  const currentItem = items?.[currentIndex % (count || 1)];
 
   useEffect(() => {
     if (count < 2 || reduceMotion || paused || hovered || focused) return;
@@ -126,25 +141,11 @@ function FeaturedCarousel() {
     return () => window.clearTimeout(timer);
   }, [count, currentIndex, focused, hovered, paused, reduceMotion]);
 
-  useEffect(() => {
-    if (!currentSlug) return;
-    const request = new AbortController();
-    const cached = detailCache.current.get(currentSlug);
-    const result = cached ? Promise.resolve(cached) : mangaAPI<MangaDetails>("mangapage", { title: currentSlug }, request.signal);
-    result.then((data) => {
-      if (request.signal.aborted) return;
-      detailCache.current.set(currentSlug, data);
-      setDetails(data);
-    }).catch(() => { /* The carousel can keep using the catalog cover. */ });
-    return () => request.abort();
-  }, [currentSlug]);
-
   if (!items || !currentItem) {
-    return <div className="flex min-h-56 items-center justify-center px-5 pt-24"><FeedStatus error={error} retry={retry} label="featured manga" /></div>;
+    return <div className="flex min-h-56 items-center justify-center px-5 pt-24"><FeedStatus error={error || (items ? "No discovery picks are available right now." : "")} retry={retry} label="featured manga" /></div>;
   }
 
-  const selectedDetails = details?.slug === currentItem.slug ? details : undefined;
-  const image = selectedDetails?.image || currentItem.image;
+  const image = currentItem.image;
   const upcoming = Array.from({ length: Math.min(4, count - 1) }, (_, i) => items[(currentIndex + i + 1) % count]);
 
   return (
@@ -166,8 +167,7 @@ function FeaturedCarousel() {
             exit={reduceMotion ? undefined : { scale: 1.1, opacity: 0 }}
             transition={{ duration: reduceMotion ? 0 : 1 }}
             className="absolute inset-0 bg-cover bg-top blur-[8px]"
-            style={{ backgroundImage: `url("${image}")` }}
-          />
+          ><MangaImage src={image} fallbackSrc={currentItem.imageFallback} alt="" className="size-full object-cover object-top" /></motion.div>
         )}
       </AnimatePresence>
       <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/70 to-[#060010]" />
@@ -180,24 +180,24 @@ function FeaturedCarousel() {
           transition={{ duration: reduceMotion ? 0 : 0.8 }}
           className="order-2 w-full max-w-lg sm:order-1"
         >
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-violet-200">{currentItem.spotlightReason || "Discover something new"}</p>
           <h1 className="mb-3 break-words text-3xl font-bold uppercase text-[#9274ff] sm:text-4xl md:text-5xl">{currentItem.title}</h1>
-          {selectedDetails?.description && (
-            <p className="mb-5 line-clamp-4 text-sm font-semibold leading-relaxed text-white/80 lg:line-clamp-6 lg:text-base">{selectedDetails.description}</p>
+          {currentItem.description && (
+            <p className="mb-5 line-clamp-4 text-sm font-semibold leading-relaxed text-white/80 lg:line-clamp-6 lg:text-base">{currentItem.description}</p>
           )}
-          <Link href={mangaHref(currentItem.slug)} className="inline-flex rounded-lg border border-white bg-black/30 px-6 py-3 text-white backdrop-blur-sm transition hover:bg-black/50">
+          <div className="mb-5"><CardSignal manga={currentItem} kind={currentItem.spotlightKind} /></div>
+          <Link prefetch={false} href={mangaHref(currentItem.slug)} className="inline-flex rounded-lg border border-white bg-black/30 px-6 py-3 text-white backdrop-blur-sm transition hover:bg-black/50">
             SEE MORE
           </Link>
         </motion.div>
         {image && (
-          <motion.img
+          <motion.div
             key={currentItem.slug + "-cover"}
             initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: reduceMotion ? 0 : 0.8 }}
-            src={image}
-            alt=""
-            className="order-1 h-[min(31svh,17rem)] max-w-full object-contain sm:order-2 sm:h-auto sm:max-h-[54svh] sm:max-w-[42%]"
-          />
+            className="order-1 max-w-full sm:order-2 sm:max-w-[42%]"
+          ><MangaImage src={image} fallbackSrc={currentItem.imageFallback} alt="" className="h-[min(31svh,17rem)] max-w-full object-contain sm:h-auto sm:max-h-[54svh]" /></motion.div>
         )}
       </div>
 
@@ -232,10 +232,23 @@ function FeaturedCarousel() {
 }
 
 export default function BrowsePage() {
+  const { data, error, retry } = useDiscovery();
   return (
     <div className="min-h-screen overflow-hidden bg-[#060010] pb-16">
-      <FeaturedCarousel />
-      {browseRows.map((row) => <BrowseRow key={row.feed} {...row} />)}
+      <FeaturedCarousel items={data?.featured} error={error} retry={retry} />
+      {data && error && <div role="status" className="px-5 pt-6 text-sm text-amber-200 sm:px-8">Showing the last available picks. Refresh is temporarily unavailable. <button onClick={retry} className="underline">Retry</button></div>}
+      {(data?.sections ?? [
+        { id: "popular", title: "Popular across sources", description: "Provider rankings and MangaDex followers.", items: undefined },
+        { id: "recent", title: "Latest chapter releases", description: "Recently updated series across providers.", items: undefined },
+        { id: "new", title: "Newly added series", description: "New to provider catalogs, not necessarily newly published.", items: undefined },
+      ]).map(section => <BrowseRow key={section.id} feed={section.id} {...section} error={error} retry={retry} />)}
+      {browseRows.map((row) => <CuratedRow key={row.feed} {...row} />)}
+      {data && <details className="mx-5 mt-12 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm text-zinc-400 sm:mx-8">
+        <summary className="cursor-pointer text-zinc-200">About these picks</summary>
+        <p className="mt-3 max-w-3xl leading-relaxed">Picks combine public provider rankings, MangaDex followers, recent chapters, and newly added catalog entries. Rankings describe each provider’s list position, not a shared view count. The spotlight mixes these lists and opens on a different pick each visit. Feeds refresh every five minutes while this page is visible.</p>
+        <ul className="mt-3 space-y-2">{data.sources.map(source => <li key={source.provider}><span className="text-zinc-200">{source.name}</span>: {source.availableFeeds.length ? source.availableFeeds.map(kind => ({ popular: "popular", recent: "recent chapters", new: "newly added" })[kind] ?? kind).join(", ") : "temporarily unavailable"}{source.staleFeeds.length > 0 ? " · using recent saved picks" : ""}{source.unavailableFeeds.length > 0 && source.availableFeeds.length > 0 ? " · some feeds unavailable" : ""}</li>)}</ul>
+        <p className="mt-3">Checked <time dateTime={data.updatedAt}>{new Date(data.updatedAt).toLocaleString("en-US", { timeZone: "UTC" })} UTC</time>. A source outage does not remove picks from the remaining providers.</p>
+      </details>}
     </div>
   );
 }

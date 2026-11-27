@@ -58,6 +58,7 @@ try{
  await notice.unroute('**/api/manga/health');
  await notice.route('**/api/manga/health',route=>route.fulfill({status:healthy?204:503,body:healthy?undefined:'Unavailable'}));
  await notice.route('**/api/manga/featured',route=>route.fulfill({json:[]}));await notice.route('**/api/manga/popular',route=>route.fulfill({json:[]}));await notice.route('**/api/manga/category?**',route=>route.fulfill({json:[]}));
+ await notice.route('**/api/manga/discovery',route=>route.fulfill({json:{featured:[],sections:[],sources:[],updatedAt:'2026-01-01T00:00:00Z'}}));
  for(const path of ['/','/read','/read/controls-fixture/chapter-2']){
   healthy=false;await notice.goto(base+path);await notice.getByText('Servers are currently down.',{exact:true}).waitFor();
   const guide=notice.getByRole('link',{name:'Self-hosting guide'});assert.match(await guide.getAttribute('href'),/^https:\/\/github.com\/Anime-Shhh\/AnyManga-Backend\//);

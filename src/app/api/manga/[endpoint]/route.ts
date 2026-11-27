@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const methods: Record<string, readonly string[]> = {
-  health: ["GET"], search: ["GET"], featured: ["GET"], popular: ["GET"],
+  health: ["GET"], discovery: ["GET"], search: ["GET"], featured: ["GET"], popular: ["GET"],
   category: ["GET"], mangapage: ["GET"], chapterimages: ["GET", "POST"],
   info: ["GET"], chapters: ["POST"], image: ["GET"],
 };
