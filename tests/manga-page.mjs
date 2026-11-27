@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright-core';
+import { chapterBatches } from '../src/lib/chapter-batches.ts';
+for(const n of [0,1,49,50,51,100,101,1200]){
+ const entries=Array.from({length:n},(_,i)=>({id:`c-${i+1}`,title:`Chapter ${i+1}`,number:String(i+1)}));
+ const batches=chapterBatches(entries);assert.equal(batches.length,Math.ceil(n/50));assert.deepEqual(batches.flatMap(b=>b.entries).map(c=>c.id),entries.map(c=>c.id));
+ assert.deepEqual(chapterBatches(entries,true).flatMap(b=>b.entries).map(c=>c.id),entries.map(c=>c.id).reverse());
+}
+const chapters=Array.from({length:1200},(_,i)=>({id:`chapter-${i+1}`,title:`Chapter ${i+1}`,number:String(i+1)}));
+chapters.splice(50,0,{id:'decimal-50',title:'Chapter 50.5',number:'50.5'});chapters.splice(101,0,{id:'decimal-100',title:'Chapter 100.5',number:'100.5'});
+assert.equal(chapterBatches(chapters)[0].entries.length,51);assert.equal(chapterBatches(chapters).at(-1).label,'1151–1200');
+assert.deepEqual(chapterBatches([{id:'0',title:'Prologue',number:'0.5'},{id:'s',title:'Unnumbered special'},{id:'a',title:'Chapter 50.5'},{id:'v1',title:'Chapter 51',number:'51'},{id:'v2',title:'Chapter 51',number:'51'}]).map(b=>[b.label,b.entries.length]),[['Prologue / Chapter 0',1],['1–50',1],['51–100',2],['Specials & extras',1]]);
+const browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE??'/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',args:[...(process.env.CI?['--no-sandbox']:[]),'--disable-gpu','--no-first-run']});
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[],requests=[],images=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/api/manga/health',r=>r.fulfill({status:204}));
+ await page.route('**/api/manga/mangapage?**',r=>{const lang=new URL(r.request().url()).searchParams.get('language');return r.fulfill({json:{name:'One Piece fixture',slug:'series-fixture',image:'/fixture-cover.svg',authors:['Oda'],genres:['Adventure','Action'],languages:['en','fr'],description:'From Publisher:\nAn adventure across the sea.\n\nThe best-selling manga in history.\n\n---\n**Note:**\n**A publisher note with [a link](https://example.com).**\n\n---\n- **Won an award**\n- Another fact\n\n<script>window.bad=true</script>\n![untrusted](https://untrusted.invalid/img)',chapterEntries:lang==='fr'?chapters.slice(0,7):chapters}})});
+ await page.route('**/fixture-cover.svg',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#b58745"/></svg>'}));
+ let releasePreview; const failedRequests=[];page.on('requestfailed',r=>failedRequests.push(r.url()));
+ await page.route('**/api/manga/chapterimages?**',async r=>{const u=new URL(r.request().url());requests.push(Object.fromEntries(u.searchParams));if(u.searchParams.get('chapter')==='chapter-2')await new Promise(resolve=>{releasePreview=resolve});return r.fulfill({json:{manga:'Fixture',slug:'series-fixture',chapter:{id:u.searchParams.get('chapter'),title:'Chapter 1'},images:['/preview-fixture/1.svg','/preview-fixture/2.svg'],previous:null,next:{id:'unused-next',title:'Next'}}}).catch(()=>{})});
+ await page.route('**/preview-fixture/**',r=>{images.push(r.request().url());return r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="900"><rect width="400" height="900" fill="#d9b878"/></svg>'})});
+ await page.goto((process.env.ANYMANGA_TEST_URL??'http://127.0.0.1:3002')+'/read/series-fixture');await page.getByRole('heading',{name:'One Piece fixture',exact:true}).waitFor();
+ const list=page.getByRole('list',{name:'Chapters in selected range'});
+ assert.equal(await list.getByRole('link').count(),51);assert.equal(await page.getByLabel('Chapter range',{exact:true}).inputValue(),'1');
+ assert.equal(await page.getByLabel('Chapter range',{exact:true}).locator('option').last().innerText(),'1151–1200');
+ assert.equal(requests.length,0);await page.getByText('Publisher notes',{exact:true}).click();await page.getByRole('link',{name:'a link',exact:true}).waitFor();assert.equal(await page.locator('img[src*="untrusted.invalid"]').count(),0);
+ await page.getByLabel('Chapter range',{exact:true}).selectOption('1151');assert.equal(await list.getByRole('link').count(),50);assert.equal(await list.getByRole('link').first().innerText(),'Chapter 1151\n↗');
+ await page.getByLabel('Chapter order',{exact:true}).selectOption('desc');assert.equal(await list.getByRole('link').first().innerText(),'Chapter 1200\n↗');
+ await page.getByLabel('Chapter order',{exact:true}).selectOption('asc');
+ const first=list.getByRole('link').first();await first.hover();await page.waitForTimeout(1100);assert.equal(requests.length,0);await page.getByLabel('Chapter order',{exact:true}).hover();await page.waitForTimeout(1100);assert.equal(requests.length,0,'abandoned hover fetched');
+ await first.hover();await page.getByRole('tooltip').waitFor();await page.getByAltText('First page of Chapter 1').waitFor();await page.waitForFunction(()=>document.querySelector('[role="tooltip"] img')?.naturalWidth>0);
+ assert.equal(requests.length,1);assert.equal(requests[0].prefetch,'0');assert.equal(images.length,1);assert(images[0].endsWith('/1.svg'));
+ const ratio=await page.getByAltText('First page of Chapter 1').evaluate(img=>img.getBoundingClientRect().width/img.getBoundingClientRect().height);assert(Math.abs(ratio-400/900)<.01);
+ await page.keyboard.press('Escape');await page.getByRole('tooltip').waitFor({state:'hidden'});
+ await page.getByLabel('Chapter order',{exact:true}).hover();await first.hover();await page.getByAltText('First page of Chapter 1').waitFor();assert.equal(requests.length,1,'preview metadata cache missed');await page.keyboard.press('Escape');
+ await page.getByLabel('Chapter order',{exact:true}).hover();await list.getByRole('link').nth(1).hover();
+ await page.getByRole('tooltip').filter({hasText:'Loading preview'}).waitFor();
+ for(let i=0;i<30&&!releasePreview;i++)await page.waitForTimeout(50);
+ assert(releasePreview);await page.getByLabel('Chapter order',{exact:true}).hover();await page.getByRole('tooltip').waitFor({state:'hidden'});
+ for(let i=0;i<30&&!failedRequests.some(u=>u.includes('chapter-2'));i++)await page.waitForTimeout(50);
+ assert(failedRequests.some(u=>u.includes('chapter-2')),'abandoned request was not cancelled');releasePreview();
+ const beforeSaveData=requests.length;await page.evaluate(()=>Object.defineProperty(navigator,'connection',{configurable:true,value:{saveData:true}}));await first.hover();await page.waitForTimeout(2200);assert.equal(requests.length,beforeSaveData,'Save-Data did not suppress preview');
+ await page.getByLabel('Chapter language',{exact:true}).selectOption('fr');await page.waitForFunction(()=>document.querySelectorAll('ol[aria-label="Chapters in selected range"] a').length===7);assert.equal(await page.getByLabel('Chapter range',{exact:true}).count(),0);assert.match(await page.getByRole('list',{name:'Chapters in selected range'}).getByRole('link').first().getAttribute('href'),/language=fr/);
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
+ const phone=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});let phonePreview=0;
+ await phone.route('**/api/manga/health',r=>r.fulfill({status:204}));
+ await phone.route('**/api/manga/mangapage?**',r=>r.fulfill({json:{name:'Touch fixture',slug:'series-fixture',chapterEntries:chapters.slice(0,2)}}));
+ await phone.route('**/api/manga/chapterimages?**',r=>{if(new URL(r.request().url()).searchParams.has('prefetch'))phonePreview++;return r.fulfill({json:{manga:'Touch fixture',slug:'series-fixture',chapter:{id:'chapter-1',title:'Chapter 1'},images:[],next:null,previous:null}})});
+ await phone.goto((process.env.ANYMANGA_TEST_URL??'http://127.0.0.1:3002')+'/read/series-fixture');await phone.getByRole('link',{name:'Chapter 1',exact:true}).tap();await phone.waitForURL('**/read/series-fixture/chapter-1');assert.equal(phonePreview,0);await phone.close();
+ console.log('PASS fixed numeric ranges, decimals, prologues, specials, volumes, reversing, language reset, safe descriptions, delayed single-image cached previews, proportions, Escape, mobile width');
+}finally{await browser.close()}

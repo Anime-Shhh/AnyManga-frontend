@@ -35,3 +35,4 @@ jobs:
           npm run test:images
           npm run test:controls
           npm run test:download
+          npm run test:manga

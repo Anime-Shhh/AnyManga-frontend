@@ -46,3 +46,9 @@ Downloads now receive PDF bytes while the Go backend processes individual pages.
 The existing ten-chapter/200-page/64 MiB source-image limits and two-job backend gate remain. Both tiers enforce a 128 MiB output bound. Download forwarding permits up to 295 seconds within Vercel's 300-second Fluid Compute function limit; normal metadata timeouts stay at 58 seconds.
 
 `npm run test:download` exercises an actual paused HTTP origin through Next.js, checking progress before completion, successful save, cancellation propagation, truncated PDFs, HTTP failures, and mobile width. For a local production frontend, start it with `MANGA_API_ORIGIN=http://127.0.0.1:18080 npm run start -- -p 3002`, then run that test; it owns the temporary fixture origin and does not need a local Go server.
+
+## Series pages
+
+Manga pages use a static blurred-cover backdrop, formatted Markdown synopsis, expandable publisher notes and facts, and author/genre metadata. Chapter selection uses fixed numeric ranges (1–50, 51–100, etc.), including decimal entries with their parent chapter; ranges can contain more than 50 entries. Prologues and unnumbered extras have separate groups. Order can reverse without changing range boundaries; language changes reset selection.
+
+Fine-pointer hover or keyboard focus for two seconds requests one first-page preview using `prefetch=0`. Only the first image loads, with existing delivery fallback and cache reuse. Leaving/scrolling/Escape cancels previews; Save-Data/2G and touch do not trigger them. `npm run test:manga` covers ranges, decimals, specials, volumes, descriptions, delayed/cancelled/cached previews, mobile layout and language reset.

@@ -8,11 +8,14 @@ export interface MangaCard {
 }
 
 export interface ChapterLink {
+  number?: string;
   id: string;
   title: string;
 }
 
 export interface MangaDetails {
+  authors?: string[];
+  genres?: string[];
   slug: string;
   name: string;
   image: string;
@@ -76,16 +79,17 @@ export function getCachedChapter(manga: string, chapter: string, language = "en"
   chapterCache.delete(key);
 }
 
-export function loadChapter(manga: string, chapter: string, language = "en", skip = "", refresh = false): Promise<ChapterData> {
+export function loadChapter(manga: string, chapter: string, language = "en", skip = "", refresh = false, options: { preview?: boolean; signal?: AbortSignal } = {}): Promise<ChapterData> {
   const cached = skip || refresh ? undefined : getCachedChapter(manga, chapter, language);
   if (cached) return Promise.resolve(cached);
 
   const key = chapterHref(manga, chapter, language) + (skip ? `&skip=${skip}` : "") + (refresh ? "&refresh=1" : "");
-  const pending = chapterRequests.get(key);
+  const pending = options.preview ? undefined : chapterRequests.get(key);
   if (pending) return pending;
 
-  const request = mangaAPI<ChapterData>("chapterimages", { manga, chapter, language, ...(skip ? { skip } : {}), ...(refresh ? { refresh: "1" } : {}) })
+  const request = mangaAPI<ChapterData>("chapterimages", { manga, chapter, language, ...(skip ? { skip } : {}), ...(refresh ? { refresh: "1" } : {}), ...(options.preview ? { prefetch: "0" } : {}) }, options.signal)
     .then((data) => {
+      if (options.signal?.aborted) throw new DOMException("Preview cancelled", "AbortError");
       const canonicalKey = chapterHref(data.slug, data.chapter.id, language);
       const entry = { data, expires: Date.now() + 2 * 60_000 };
       for (const entryKey of new Set([key, canonicalKey, chapterHref(manga, chapter, language)])) {
@@ -99,9 +103,9 @@ export function loadChapter(manga: string, chapter: string, language = "en", ski
       }
       return data;
     })
-    .finally(() => chapterRequests.delete(key));
+    .finally(() => { if (!options.preview) chapterRequests.delete(key); });
 
-  chapterRequests.set(key, request);
+  if (!options.preview) chapterRequests.set(key, request);
   return request;
 }
 

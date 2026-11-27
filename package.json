@@ -10,7 +10,8 @@
     "test:reader": "node tests/reader-prefetch.mjs",
     "test:images": "node tests/image-delivery.mjs",
     "test:controls": "node tests/reader-controls.mjs",
-    "test:download": "node tests/download-stream.mjs"
+    "test:download": "node tests/download-stream.mjs",
+    "test:manga": "node tests/manga-page.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
@@ -23,6 +24,7 @@
     "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "react-markdown": "^10.1.0",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
